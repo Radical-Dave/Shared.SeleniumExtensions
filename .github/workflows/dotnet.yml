@@ -22,9 +22,9 @@ jobs:
     - name: Build
       run: dotnet build --no-restore
     - name: Pack
-      run: dotnet pack -v normal -c Release --no-restore --include-symbols --include-source src/code/Shared.SeleniumExtensions.csproj
+      run: dotnet pack -v normal -c Release --no-restore --include-symbols --include-source src/Shared.SeleniumExtensions.csproj
     - name: Publish
-      run: dotnet nuget push src/code/bin/Release/Shared.SeleniumExtensions.*.nupkg --api-key  ${{ secrets.NUGET_KEY }} --source https://api.nuget.org/v3/index.json
+      run: dotnet nuget push src/bin/Release/Shared.SeleniumExtensions.*.nupkg --api-key  ${{ secrets.NUGET_KEY }} --source https://api.nuget.org/v3/index.json
       
       
       
