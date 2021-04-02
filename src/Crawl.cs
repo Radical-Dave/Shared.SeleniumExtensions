@@ -9,11 +9,10 @@ namespace Shared.SeleniumExtensions
 {
     public static partial class SeleniumExtensions
     {
-        private static Dictionary<string, string> links { get; set; }
+        //private static Dictionary<string, string> Links { get; set; }
 
         /// <summary>
         /// Crawl
-        /// //https://blog.testproject.io/2020/12/28/10-common-selenium-exceptions-in-c-and-how-to-fix-them/
         /// </summary>
         /// <param name="driver"></param>
         /// <param name="url"></param>
@@ -22,111 +21,117 @@ namespace Shared.SeleniumExtensions
         /// <param name="emptyLinks"></param>
         /// <param name="currentDepth"></param>
         /// <param name="maxDepth"></param>
+        /// <param name="errorChecks"></param> 
         /// <param name="notCrawledMessage"></param>
         /// <returns></returns>
-        public static string Crawl(this IWebDriver driver, string url, string urlBase = null, string[] excludes = null, bool emptyLinks = false, int currentDepth = 1, int maxDepth = 1, bool verbose = false, string notCrawledMessage = "n/a")
+        public static string Crawl(this IWebDriver driver, string url, string urlBase = null, string[] excludes = null, bool emptyLinks = false, int currentDepth = 1, int maxDepth = 1, bool verbose = false, string[] errorChecks = null, string notCrawledMessage = "n/a")
         {
+            var Links = new Dictionary<string, string>() { { url, "started" } };
+
             if (string.IsNullOrEmpty(urlBase)) urlBase = url;
             if (excludes == null) excludes = Array.Empty<string>();
             var methodSignature = $"{typeof(SeleniumExtensions).FullName}.Crawl({url},{string.Join(",", excludes)},{emptyLinks},{currentDepth},{maxDepth})";
             var results = new StringBuilder();
-
             if (verbose) results.AppendLine($"{methodSignature}:start");
 
             driver.Navigate().GoToUrl(url);
 
-            if (driver.PageSource.Length == 0) return $"{url}:ERROR - no results";
-            if (driver.PageSource.ToLower() == "<html><head></head><body></body></html>") return $"{url}:ERROR - empty results";
-            if (driver.PageSource.ToLower().Contains("error")) return $"{url}:Contains ERROR";//:{driver.PageSource}";
+            if (driver.PageSource.Length == 0) return $"ERROR - no results";
+            if ((errorChecks != null || errorChecks.Any() && !string.IsNullOrEmpty(driver.PageSource)) && errorChecks.Any(errorCheck => errorCheck.IndexOf(driver.PageSource, StringComparison.CurrentCultureIgnoreCase) > -1)) return $"ERROR CHECK:{errorChecks}";
 
-            var anchors = driver.FindElements(By.TagName("a")).Where(a => !string.IsNullOrEmpty(a.Text) && !excludes.Contains(a.Text.Trim().ToLower())).ToList();
-            var anchorsCount = anchors.Count();
-            if (anchors == null || !anchors.Any())
+            var links = GetLinks(driver, excludes);
+            var linksCount = (links == null || !links.Any()) ? 0 : links.Length;
+            if (linksCount == 0)
             {
-                results.AppendLine("no anchors?");
+                if (verbose) results.AppendLine($"no links?");
             }
             else
             {
-                if (links == null) links = new Dictionary<string, string>() { { url, "started" } };
+                IWebDriver backseatDriver = null;
 
-                using (var backseatDriver = GetDriver())
+                var tested = 1;//current
+                var untested = 0;
+
+                foreach (var link in links)
                 {
-                    foreach (var anchor in driver.FindElements(By.TagName("a")).Where(a => !string.IsNullOrEmpty(a.Text) && !excludes.Contains(a.Text.Trim().ToLower())))
+                    var linkTested = false;
+                    try
                     {
-                        try
-                        {
-                            var href = anchor.GetAttribute("href");
-                            if (href == null || !href.StartsWith(urlBase)) continue;
-                            href = href.Remove(0, urlBase.Length);
-                            if (href.Length > 0 && href.StartsWith("/")) href = href.Remove(0, 1);
+                        var href = link;
+                        if (href == null || !href.StartsWith(urlBase)) continue;
+                        var linkTest = $"{href.Remove(0, urlBase.Length)}";
+                        if (linkTest.StartsWith("/")) linkTest = linkTest.Remove(0, 1);
+                        if (string.IsNullOrEmpty(href) || excludes.Any(linkTest.StartsWith)) continue;
 
-                            foreach (var queryStringTag in new string[] { "#", "?" })
+                        var queryStringTags = new string[] { "#", "?" };
+                        if (queryStringTags.Any(href.Contains))
+                        {
+                            foreach (var queryStringTag in queryStringTags)
                             {
                                 if (!href.Contains(queryStringTag)) continue;
                                 href = href.Substring(0, href.IndexOf(queryStringTag));
                             }
-
-                            var excluded = false;
-                            foreach (var exclude in excludes)
-                            {
-                                if (href.ToLower().StartsWith(exclude)) { excluded = true; break; }
-                            }
-                            if (excluded) continue;
-
-                            if (href.EndsWith("/")) href = href.Remove(href.Length - 1, 1);
-
-                            if (links.ContainsKey(href) || string.IsNullOrEmpty(href)) continue;
-
-                            var linkResults = string.Empty;
-
-                            if (currentDepth < maxDepth || maxDepth == -1)
-                            {
-                                linkResults = Crawl(backseatDriver, $"{url}/{href}", urlBase, excludes, false, currentDepth + 1, maxDepth);
-                                if (verbose) results.AppendLine($"*VERBOSE* Crawled:{href}:{linkResults}");
-                                //if (driver.Title != backseatDriver.Title) results.AppendLine($"BAD DRIVERS:{driver.Title} & {backseatDriver.Title}");
-                            }
-                            else
-                            {
-                                linkResults = notCrawledMessage;
-                            }
-
-                            if (!links.ContainsKey(href))
-                            {
-                                links.Add(href, linkResults);
-                            }
-                            else
-                            {
-                                links[href] = linkResults;
-                            }
-                            //results.AppendLine(href + "=" + linkResults);
                         }
-                        catch (Exception exception)
+
+                        if (href.EndsWith("/")) href = href.Remove(href.Length - 1, 1);
+
+                        //var hrefUrl = $"{url}/{href}";
+                        var hrefUrl = href;
+
+                        if (Links.ContainsKey(hrefUrl) || string.IsNullOrEmpty(href)) continue;
+
+                        var linkResults = string.Empty;
+
+                        if (currentDepth < maxDepth || maxDepth == -1)
                         {
-                            var msg = $"ERROR processing {anchor.Text}:{exception.Message}";
-                            Trace.TraceError(msg);
-                            results.AppendLine(msg);
+                            if (backseatDriver == null) backseatDriver = GetDriver();
+                            linkResults = Crawl(backseatDriver, hrefUrl, urlBase, excludes, false, currentDepth + 1, maxDepth, verbose, errorChecks, notCrawledMessage);
+                            if (verbose) results.AppendLine($"{hrefUrl}:{linkResults} *VERBOSE* Crawled...");
+                            //if (driver.Title != backseatDriver.Title) results.AppendLine($"BAD DRIVERS:{driver.Title} & {backseatDriver.Title}");
+                            linkTested = true;
+                        }
+                        else
+                        {
+                            linkResults = notCrawledMessage;
+                        }
+
+                        if (!Links.ContainsKey(hrefUrl))
+                        {
+                            Links.Add(hrefUrl, linkResults);
+                        }
+                        else
+                        {
+                            Links[hrefUrl] = linkResults;
+                        }
+                        if (verbose) results.AppendLine($"{hrefUrl}={linkResults}");
+
+                        if (linkTested)
+                        {
+                            ++tested;
+                        }
+                        else
+                        {
+                            ++untested;
                         }
                     }
-
-                    backseatDriver.Quit();
+                    catch (Exception exception)
+                    {
+                        var msg = $"ERROR processing {link}:{exception.Message}";
+                        Trace.TraceError(msg);
+                        if (verbose) results.AppendLine(msg);
+                    }
                 }
+                if (maxDepth > 1 && backseatDriver != null) backseatDriver.Quit();
+                results.AppendLine($"tested:{tested},untested:{untested},anchors:{linksCount},links:{Links.Count}");
+                Links[url] = results.ToString();
+            }
 
-                var tested = 1;//current
-                var untested = 0;
-                foreach (var link in links.Where(l => l.Key != url))
+            if (currentDepth == 1)
+            {
+                foreach (var link in Links.Where(l => l.Value != notCrawledMessage || verbose == false))
                 {
-                    if (verbose) results.AppendLine(link.Key + "=" + link.Value);
-                    if (link.Value.StartsWith(notCrawledMessage))
-                    {
-                        ++untested;
-                    }
-                    else
-                    {
-                        ++tested;
-                    }
+                    results.Append($"{link.Key}={link.Value}");
                 }
-                results.AppendLine($"{url}:tested:{tested},untested:{untested},anchors:{anchorsCount},links:{links.Count}");
-                links[url] = results.ToString();
             }
 
             if (verbose) results.AppendLine($"{methodSignature}:end");

@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using OpenQA.Selenium;
+using System;
+using System.Diagnostics;
 
 namespace Shared.SeleniumExtensions.Tests
 {
@@ -25,13 +27,19 @@ namespace Shared.SeleniumExtensions.Tests
             set { testContextInstance = value; }
         }
 
-        //[TestMethod]
-        //public void CrawlTest()
-        //{
-        //    var results = driver.Crawl(config["SiteUrl"], excludes: config["CrawlExcludes"]?.Split(','), maxDepth: int.Parse(config["MaxDepth"] ?? "1"), verbose: verbose);
-        //    Assert.IsTrue(driver.Title.Length > 0);
-        //    TestContext.WriteLine(results);
-        //}
+        [TestMethod]
+        public void CrawlTest()
+        {
+            var results = driver.Crawl(config["SiteUrl"], excludes: config["CrawlExcludes"]?.Split(','), errorChecks: config["ErrorChecks"].Split(','), maxDepth: int.Parse(config["MaxDepth"] ?? "1"), verbose: verbose);
+            TestContext.WriteLine(results);
+            if (verbose)
+            {
+                //Console.WriteLine(results);
+                //Debug.WriteLine(results);
+                //Trace.WriteLine(results);
+            }
+            Assert.IsFalse(results.Contains("error", StringComparison.CurrentCultureIgnoreCase), $"ERROR:{results}");
+        }
 
         //[TestMethod]
         //public void CrawlSingleTest()
@@ -41,14 +49,14 @@ namespace Shared.SeleniumExtensions.Tests
         //    TestContext.WriteLine(results);
         //}
 
-        [TestMethod]
-        public void CrawlTwoDeepTest()
-        {
-            var results = driver.Crawl(config["SiteUrl"], excludes: config["CrawlExcludes"]?.Split(','), maxDepth: 2, verbose: verbose);
-            var error = !results.ToLower().Contains("error");
-            if (error || verbose) TestContext.WriteLine(results);
-            Assert.IsTrue(error, $"ERROR:{results}");
-        }
+        //[TestMethod]
+        //public void CrawlTwoDeepTest()
+        //{
+        //    var results = driver.Crawl(config["SiteUrl"], excludes: config["CrawlExcludes"]?.Split(','), maxDepth: 2, verbose: verbose);
+        //    var error = results.Contains("error", StringComparison.CurrentCultureIgnoreCase);
+        //    if (error || verbose) TestContext.WriteLine(results);
+        //    Assert.IsTrue(error, $"ERROR:{results}");
+        //}
 
         [TestInitialize]
         public void SetupTest()

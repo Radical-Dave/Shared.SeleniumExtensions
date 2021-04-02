@@ -3,23 +3,27 @@
   <PropertyGroup>
     <TargetFramework>netstandard2.0</TargetFramework>
     <Authors>Sitecore Dave, Radical Dave, David Walker</Authors>
-    <Version>0.0.1</Version>
-    <Description>Selenium Helpers for .NET - PageHasContent, PageHasTitle, Search (with wildcards)</Description>
+    <Version>0.0.2</Version>
+    <Description>Extensions for Selenium: IWebDriver - Crawl, GetDriver, GetLinks, PageHasContent, PageHasTitle, Search (with wildcards), TestCleanUp, WaitInSeconds, IWebElement - GetAttribute</Description>
     <Copyright>Copyright ©  2020</Copyright>
     <PackageProjectUrl>https://github.com/Radical-Dave/Shared.SeleniumExtensions</PackageProjectUrl>
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
     <RepositoryUrl>https://github.com/Radical-Dave/Shared.SeleniumExtensions.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <AssemblyVersion>0.0.0.1</AssemblyVersion>
-    <FileVersion>0.0.0.1</FileVersion>
+    <AssemblyVersion>0.0.0.2</AssemblyVersion>
+    <FileVersion>0.0.0.2</FileVersion>
     <PackageTags>selenium</PackageTags>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <PackageReleaseNotes>Added Crawl</PackageReleaseNotes>
+    <PackageReleaseNotes>Added Crawl-ErrorChecks, GetLinks and minor updates to GetDriver and CrawlTests</PackageReleaseNotes>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="5.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="5.0.0" />
+    <PackageReference Include="Selenium.Support" Version="3.141.0" />
     <PackageReference Include="Selenium.WebDriver" Version="3.141.0" />
   </ItemGroup>
 
